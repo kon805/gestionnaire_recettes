@@ -17,6 +17,7 @@ class AppRoutes {
   static const String main = '/main';
   static const String splash = '/splash';
   static const String addRecette = '/ajouter-recette';
+  static const String recetteDetail = '/recette-detail';
 
   static final Map<String, WidgetBuilder> routes = {
     welcome: (context) => const WelcomePage(),

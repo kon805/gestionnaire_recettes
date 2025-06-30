@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:gestionnaire_recettes/models/recette.dart';
 import 'package:gestionnaire_recettes/routes/app_routes.dart';
 import 'package:gestionnaire_recettes/services/recette_service.dart';
+import 'package:gestionnaire_recettes/services/favoris_service.dart';
+import 'package:gestionnaire_recettes/services/session_service.dart';
+import 'package:gestionnaire_recettes/screens/recette_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -85,18 +88,76 @@ class _HomePageState extends State<HomePage> {
                       final recette = recettes[index];
                       return Card(
                         margin: const EdgeInsets.all(8),
-                        child: ListTile(
-                          leading: Image.file(
-                            File(recette.imagePath),
-                            width: 60,
-                            fit: BoxFit.cover,
-                          ),
-                          title: Text(recette.titre),
-                          subtitle: Text(
-                            recette.description.length > 50
-                                ? recette.description.substring(0, 50) + '...'
-                                : recette.description,
-                          ),
+                        child: FutureBuilder<int?>(
+                          future: SessionService.recupererUtilisateurConnecte(),
+                          builder: (context, userSnapshot) {
+                            if (!userSnapshot.hasData) {
+                              return ListTile(
+                                leading: Image.file(
+                                  File(recette.imagePath),
+                                  width: 60,
+                                  fit: BoxFit.cover,
+                                ),
+                                title: Text(recette.titre),
+                                subtitle: Text(
+                                  recette.description.length > 50
+                                      ? '${recette.description.substring(0, 50)}...'
+                                      : recette.description,
+                                ),
+                              );
+                            }
+                            final userId = userSnapshot.data;
+                            return FutureBuilder<bool>(
+                              future: userId == null
+                                  ? Future.value(false)
+                                  : FavorisService.estFavori(
+                                      userId,
+                                      recette.id,
+                                    ),
+                              builder: (context, favoriSnap) {
+                                final estFavori = favoriSnap.data ?? false;
+                                return ListTile(
+                                  leading: Image.file(
+                                    File(recette.imagePath),
+                                    width: 60,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  title: Text(recette.titre),
+                                  subtitle: Text(
+                                    recette.description.length > 50
+                                        ? '${recette.description.substring(0, 50)}...'
+                                        : recette.description,
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      estFavori
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: estFavori ? Colors.red : null,
+                                    ),
+                                    onPressed: userId == null
+                                        ? null
+                                        : () async {
+                                            await FavorisService.toggleFavori(
+                                              userId,
+                                              recette.id,
+                                            );
+                                            setState(() {});
+                                          },
+                                  ),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            RecetteDetailPage(recette: recette),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
                         ),
                       );
                     },
@@ -113,7 +174,7 @@ class _HomePageState extends State<HomePage> {
           await Navigator.pushNamed(context, AppRoutes.addRecette);
           _rafraichir(); // recharge après ajout
         },
-        child: const Text('Ajouter'),
+        child: const Icon(Icons.add),
       ),
     );
   }

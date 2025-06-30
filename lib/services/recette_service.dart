@@ -63,4 +63,32 @@ class RecetteService {
 
     return result.map((map) => Recette.fromMap(map)).toList();
   }
+
+  static Future<void> supprimerRecette(int recetteId) async {
+    final db = await DatabaseService.getDatabase();
+    // Supprime dans tables enfants
+    await db.delete(
+      'ingredients',
+      where: 'recette_id = ?',
+      whereArgs: [recetteId],
+    );
+    await db.delete('etapes', where: 'recette_id = ?', whereArgs: [recetteId]);
+    await db.delete('favoris', where: 'recette_id = ?', whereArgs: [recetteId]);
+    // Supprime la recette
+    await db.delete('recettes', where: 'id = ?', whereArgs: [recetteId]);
+  }
+
+  static Future<void> mettreAJourRecette(
+    int recetteId, {
+    required String titre,
+    required String description,
+  }) async {
+    final db = await DatabaseService.getDatabase();
+    await db.update(
+      'recettes',
+      {'titre': titre, 'description': description},
+      where: 'id = ?',
+      whereArgs: [recetteId],
+    );
+  }
 }

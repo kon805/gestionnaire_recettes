@@ -10,7 +10,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'recettes.db');
     _database = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE utilisateurs (
@@ -51,6 +51,19 @@ class DatabaseService {
       FOREIGN KEY (recette_id) REFERENCES recettes(id)
     )
   ''');
+
+        // Table favoris
+        await db.execute('''
+  CREATE TABLE favoris (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    utilisateur_id INTEGER,
+    recette_id INTEGER,
+    note INTEGER DEFAULT 0,
+    UNIQUE(utilisateur_id, recette_id),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id),
+    FOREIGN KEY (recette_id) REFERENCES recettes(id)
+  )
+''');
       },
     );
     return _database!;
