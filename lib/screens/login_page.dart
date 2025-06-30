@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:gestionnaire_recettes/services/database_service.dart';
 import 'package:gestionnaire_recettes/models/utilisateur.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:gestionnaire_recettes/routes/app_routes.dart';
+import 'package:gestionnaire_recettes/services/session_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,8 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (utilisateur != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('utilisateur_id', utilisateur.id!);
+      await SessionService.enregistrerSession(utilisateur.id!);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.home);

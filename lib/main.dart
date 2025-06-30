@@ -13,7 +13,8 @@ class RecetteApp extends StatelessWidget {
     return MaterialApp(
       title: 'Gestionnaire de Recettes',
       theme: ThemeData(primarySwatch: Colors.teal, useMaterial3: true),
-      initialRoute: AppRoutes.welcome,
+      initialRoute: AppRoutes.splash,
+
       routes: AppRoutes.routes,
     );
   }
