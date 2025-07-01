@@ -35,6 +35,7 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_rating_bar: ^4.0.1
   image_picker: ^1.0.4
+
   
 
   # The following adds the Cupertino Icons font to your application.
@@ -42,6 +43,9 @@ dependencies:
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
+  flutter_native_splash: ^2.3.5
+  flutter_launcher_icons: ^0.13.1
+
   flutter_test:
     sdk: flutter
 
@@ -57,11 +61,20 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+   uses-material-design: true
+   assets:
+    - assets/images/banner1.jpg
+    - assets/images/banner2.jpg
+    - assets/images/banner3.jpg
+    - assets/images/logo.png
+    - assets/images/logo2.png
+
+    
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
-  uses-material-design: true
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -93,3 +106,14 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_native_splash:
+  color: "#FFA500" # fond orange
+  image: assets/images/logo.png # ton logo
+  android: true
+  ios: true
+  fullscreen: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"

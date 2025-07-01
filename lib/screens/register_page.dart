@@ -35,11 +35,11 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       await DatabaseService.inscrire(user);
       setState(() {
-        _message = "Inscription réussie. Connectez-vous.";
+        _message = "✅ Inscription réussie. Connectez-vous.";
       });
     } catch (e) {
       setState(() {
-        _message = "Erreur : Email déjà utilisé.";
+        _message = "❌ Erreur : Email déjà utilisé.";
       });
     }
 
@@ -58,52 +58,111 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Colors.orange;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Inscription')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: nomController,
-                    decoration: const InputDecoration(labelText: 'Nom'),
-                    validator: (value) =>
-                        value == null || value.isEmpty ? 'Champ requis' : null,
-                  ),
-                  TextFormField(
-                    controller: emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (value) => value == null || !value.contains('@')
-                        ? 'Email invalide'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: mdpController,
-                    decoration: const InputDecoration(
-                      labelText: 'Mot de passe',
-                    ),
-                    obscureText: true,
-                    validator: (value) => value == null || value.length < 4
-                        ? 'Minimum 4 caractères'
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-                  _isLoading
-                      ? const CircularProgressIndicator()
-                      : ElevatedButton(
-                          onPressed: _register,
-                          child: const Text("S'inscrire"),
-                        ),
-                  const SizedBox(height: 10),
-                  if (_message.isNotEmpty)
-                    Text(_message, style: const TextStyle(color: Colors.red)),
-                ],
+      backgroundColor: Colors.white,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Column(
+            children: [
+              Image.asset('assets/images/logo2.png', height: 100),
+              const SizedBox(height: 16),
+              const Text(
+                'Créer un compte',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-            ),
+              const SizedBox(height: 24),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: nomController,
+                      decoration: InputDecoration(
+                        labelText: 'Nom',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: primaryColor),
+                        ),
+                      ),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Champ requis'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: primaryColor),
+                        ),
+                      ),
+                      validator: (value) =>
+                          value == null || !value.contains('@')
+                          ? 'Email invalide'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: mdpController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Mot de passe',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: primaryColor),
+                        ),
+                      ),
+                      validator: (value) => value == null || value.length < 4
+                          ? 'Minimum 4 caractères'
+                          : null,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton.icon(
+                              onPressed: _register,
+                              icon: const Icon(Icons.app_registration),
+                              label: const Text("S'inscrire"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_message.isNotEmpty)
+                      Text(
+                        _message,
+                        style: TextStyle(
+                          color: _message.startsWith('✅')
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

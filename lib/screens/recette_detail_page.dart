@@ -6,6 +6,7 @@ import 'package:gestionnaire_recettes/services/favoris_service.dart';
 import 'package:gestionnaire_recettes/services/recette_service.dart';
 import 'package:gestionnaire_recettes/services/session_service.dart';
 import 'package:gestionnaire_recettes/services/database_service.dart';
+import 'package:gestionnaire_recettes/screens/edit_recette_page.dart';
 
 class RecetteDetailPage extends StatefulWidget {
   final Recette recette;
@@ -22,6 +23,8 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
   final Future<int?> _userIdF = SessionService.recupererUtilisateurConnecte();
   late Future<bool> _isFavF;
   late Future<double> _noteMoyenneF;
+
+  final Color primaryColor = Colors.orange;
 
   @override
   void initState() {
@@ -83,11 +86,23 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.recette.titre),
+        backgroundColor: primaryColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () {
-              // TODO : naviguer vers une page d’édition (si tu la crées)
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditRecettePage(recette: widget.recette),
+                ),
+              );
+              if (result == true) {
+                setState(() {
+                  chargerDetails();
+                  _refreshFavAndNote();
+                });
+              }
             },
           ),
           IconButton(
@@ -107,7 +122,10 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text("Supprimer"),
+                      child: const Text(
+                        "Supprimer",
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -118,24 +136,43 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.file(
-              File(widget.recette.imagePath),
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
+            // Image avec ombre et arrondis
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Image.file(
+                  File(widget.recette.imagePath),
+                  width: double.infinity,
+                  height: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+
+            // Description justifiée
             Text(
               widget.recette.description,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16, height: 1.4),
+              textAlign: TextAlign.justify,
             ),
-            const SizedBox(height: 16),
 
-            /// ---- Favori + Note -------------------------------------------------
+            const SizedBox(height: 30),
+
+            // Favoris + Note
             FutureBuilder<int?>(
               future: _userIdF,
               builder: (context, snapUser) {
@@ -144,21 +181,24 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
                 final uid = snapUser.data!;
                 return Row(
                   children: [
-                    // Favori
                     FutureBuilder<bool>(
                       future: _isFavF,
                       builder: (context, snapFav) {
                         final fav = snapFav.data ?? false;
                         return IconButton(
+                          iconSize: 32,
                           icon: Icon(
                             fav ? Icons.favorite : Icons.favorite_border,
-                            color: fav ? Colors.red : null,
+                            color: fav ? Colors.red : Colors.grey[700],
                           ),
                           onPressed: () => _toggleFavori(uid),
+                          tooltip: fav
+                              ? 'Retirer des favoris'
+                              : 'Ajouter aux favoris',
                         );
                       },
                     ),
-                    // Notation
+                    const SizedBox(width: 12),
                     FutureBuilder<double>(
                       future: _noteMoyenneF,
                       builder: (context, snapNote) {
@@ -170,14 +210,19 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
                               minRating: 1,
                               direction: Axis.horizontal,
                               allowHalfRating: false,
-                              itemSize: 24,
+                              itemSize: 28,
                               itemCount: 5,
                               itemBuilder: (context, _) =>
                                   const Icon(Icons.star, color: Colors.amber),
                               onRatingUpdate: (val) => _updateNote(uid, val),
                             ),
                             const SizedBox(width: 8),
-                            Text(note.toStringAsFixed(1)),
+                            Text(
+                              note.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -187,22 +232,73 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
               },
             ),
 
-            const SizedBox(height: 24),
-            const Text(
-              "🧂 Ingrédients",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            ...ingredients.map((i) => Text("- $i")),
+            const SizedBox(height: 40),
 
-            const SizedBox(height: 24),
-            const Text(
-              "🪜 Étapes",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Section ingrédients
+            Text(
+              "🧂 Ingrédients",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+            ...ingredients.map(
+              (i) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.circle,
+                      size: 8,
+                      color: Colors.orangeAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(i, style: const TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Section étapes
+            Text(
+              "🪜 Étapes",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
             ...etapes.asMap().entries.map(
-              (e) => Text("${e.key + 1}. ${e.value}"),
+              (e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${e.key + 1}.",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        e.value,
+                        style: const TextStyle(fontSize: 16, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

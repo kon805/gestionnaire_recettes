@@ -11,11 +11,9 @@ class RecetteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gestionnaire de Recettes',
-      theme: ThemeData(primarySwatch: Colors.teal, useMaterial3: true),
       initialRoute: AppRoutes.splash,
-
-      routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      // ← ici on démarre par le splash
     );
   }
 }
