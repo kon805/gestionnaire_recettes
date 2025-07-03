@@ -7,6 +7,80 @@ import 'package:gestionnaire_recettes/services/recette_service.dart';
 import 'package:gestionnaire_recettes/services/session_service.dart';
 import 'package:gestionnaire_recettes/services/database_service.dart';
 import 'package:gestionnaire_recettes/screens/edit_recette_page.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+
+Future<void> exporterRecetteEnPDF({
+  required String titre,
+  required String description,
+  required List<String> ingredients,
+  required List<String> etapes,
+}) async {
+  final pdf = pw.Document();
+
+  pdf.addPage(
+    pw.Page(
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            titre,
+            style: pw.TextStyle(
+              fontSize: 24,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.orange,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Text(description, style: pw.TextStyle(fontSize: 16)),
+          pw.SizedBox(height: 20),
+          pw.Text(
+            "Ingrédients :",
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.orange,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Bullet(
+            text: ingredients.join('\n'),
+            style: const pw.TextStyle(fontSize: 14),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Text(
+            "Étapes :",
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.orange,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: etapes.asMap().entries.map((entry) {
+              final i = entry.key + 1;
+              final e = entry.value;
+              return pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 8),
+                child: pw.Text(
+                  "$i. $e",
+                  style: const pw.TextStyle(fontSize: 14),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  await Printing.layoutPdf(
+    onLayout: (PdfPageFormat format) async => pdf.save(),
+  );
+}
 
 class RecetteDetailPage extends StatefulWidget {
   final Recette recette;
@@ -19,18 +93,27 @@ class RecetteDetailPage extends StatefulWidget {
 class _RecetteDetailPageState extends State<RecetteDetailPage> {
   List<String> ingredients = [];
   List<String> etapes = [];
+  bool _isLoading = true;
 
   final Future<int?> _userIdF = SessionService.recupererUtilisateurConnecte();
   late Future<bool> _isFavF;
   late Future<double> _noteMoyenneF;
 
-  final Color primaryColor = Colors.orange;
+  final Color primaryColor = const Color(0xFFEF6C00);
+  final Color backgroundColor = const Color(0xFFF8F9FA);
+  final double borderRadius = 16.0;
 
   @override
   void initState() {
     super.initState();
-    chargerDetails();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    await chargerDetails();
     _refreshFavAndNote();
+    setState(() => _isLoading = false);
   }
 
   void _refreshFavAndNote() {
@@ -73,123 +156,145 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
   }
 
   Future<void> _supprimer() async {
-    await RecetteService.supprimerRecette(widget.recette.id);
-    if (!mounted) return;
-    Navigator.pop(context); // Retour à la liste
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Recette supprimée")));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.recette.titre),
-        backgroundColor: primaryColor,
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Confirmer la suppression"),
+        content: const Text("Voulez-vous vraiment supprimer cette recette ?"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditRecettePage(recette: widget.recette),
-                ),
-              );
-              if (result == true) {
-                setState(() {
-                  chargerDetails();
-                  _refreshFavAndNote();
-                });
-              }
-            },
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Annuler"),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Supprimer"),
-                  content: const Text(
-                    "Confirmer la suppression de cette recette ?",
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text("Annuler"),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        "Supprimer",
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              if (ok == true) _supprimer();
-            },
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Supprimer", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image avec ombre et arrondis
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Image.file(
-                  File(widget.recette.imagePath),
-                  width: double.infinity,
-                  height: 220,
-                  fit: BoxFit.cover,
-                ),
+    );
+
+    if (confirmed == true) {
+      await RecetteService.supprimerRecette(widget.recette.id);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Recette supprimée avec succès"),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          backgroundColor: Colors.green[400],
+        ),
+      );
+    }
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        widget.recette.titre,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+      ),
+      backgroundColor: primaryColor,
+      elevation: 0,
+      centerTitle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit),
+          tooltip: 'Modifier',
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditRecettePage(recette: widget.recette),
               ),
-            ),
-            const SizedBox(height: 20),
+            );
+            if (result == true) await _loadData();
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete),
+          tooltip: 'Supprimer',
+          onPressed: _supprimer,
+        ),
+      ],
+    );
+  }
 
-            // Description justifiée
-            Text(
-              widget.recette.description,
-              style: const TextStyle(fontSize: 16, height: 1.4),
-              textAlign: TextAlign.justify,
-            ),
+  Widget _buildImageSection() {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Image.file(
+          File(widget.recette.imagePath),
+          width: double.infinity,
+          height: 240,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 30),
+  Widget _buildDescriptionSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            widget.recette.description,
+            style: const TextStyle(fontSize: 16, height: 1.5),
+            textAlign: TextAlign.justify,
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Favoris + Note
-            FutureBuilder<int?>(
-              future: _userIdF,
-              builder: (context, snapUser) {
-                if (!snapUser.hasData || snapUser.data == null)
-                  return const SizedBox.shrink();
-                final uid = snapUser.data!;
-                return Row(
+  Widget _buildRatingSection() {
+    return FutureBuilder<int?>(
+      future: _userIdF,
+      builder: (context, snapUser) {
+        if (!snapUser.hasData || snapUser.data == null) {
+          return const SizedBox();
+        }
+        final uid = snapUser.data!;
+        return Card(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     FutureBuilder<bool>(
                       future: _isFavF,
                       builder: (context, snapFav) {
                         final fav = snapFav.data ?? false;
                         return IconButton(
-                          iconSize: 32,
                           icon: Icon(
                             fav ? Icons.favorite : Icons.favorite_border,
                             color: fav ? Colors.red : Colors.grey[700],
+                            size: 32,
                           ),
                           onPressed: () => _toggleFavori(uid),
                           tooltip: fav
@@ -198,63 +303,88 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
                         );
                       },
                     ),
-                    const SizedBox(width: 12),
                     FutureBuilder<double>(
                       future: _noteMoyenneF,
                       builder: (context, snapNote) {
                         final note = snapNote.data ?? 0.0;
-                        return Row(
+                        return Column(
                           children: [
                             RatingBar.builder(
                               initialRating: note,
                               minRating: 1,
                               direction: Axis.horizontal,
-                              allowHalfRating: false,
+                              allowHalfRating: true,
                               itemSize: 28,
                               itemCount: 5,
                               itemBuilder: (context, _) =>
                                   const Icon(Icons.star, color: Colors.amber),
                               onRatingUpdate: (val) => _updateNote(uid, val),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 4),
                             Text(
-                              note.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              "Note moyenne: ${note.toStringAsFixed(1)}/5",
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         );
                       },
                     ),
                   ],
-                );
-              },
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text("Exporter en PDF"),
+                  onPressed: () => exporterRecetteEnPDF(
+                    titre: widget.recette.titre,
+                    description: widget.recette.description,
+                    ingredients: ingredients,
+                    etapes: etapes,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(borderRadius),
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+        );
+      },
+    );
+  }
 
-            const SizedBox(height: 40),
-
-            // Section ingrédients
+  Widget _buildIngredientsSection() {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              "🧂 Ingrédients",
+              "Ingrédients",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             ...ingredients.map(
               (i) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.circle,
-                      size: 8,
-                      color: Colors.orangeAccent,
-                    ),
-                    const SizedBox(width: 8),
+                    Icon(Icons.circle, size: 8, color: primaryColor),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(i, style: const TextStyle(fontSize: 16)),
                     ),
@@ -262,44 +392,94 @@ class _RecetteDetailPageState extends State<RecetteDetailPage> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 30),
-
-            // Section étapes
+  Widget _buildStepsSection() {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              "🪜 Étapes",
+              "Étapes de préparation",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             ...etapes.asMap().entries.map(
               (e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "${e.key + 1}.",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
                         color: primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          "${e.key + 1}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         e.value,
-                        style: const TextStyle(fontSize: 16, height: 1.3),
+                        style: const TextStyle(fontSize: 16, height: 1.4),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: _buildAppBar(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildImageSection(),
+            _buildDescriptionSection(),
+            _buildRatingSection(),
+            _buildIngredientsSection(),
+            _buildStepsSection(),
+            const SizedBox(height: 24),
           ],
         ),
       ),

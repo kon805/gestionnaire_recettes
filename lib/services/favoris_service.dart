@@ -24,6 +24,22 @@ class FavorisService {
         'note': 0,
       });
     }
+
+    // Met à jour le nombre de likes dans la table recettes
+    final count =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM favoris WHERE recette_id = ?',
+            [recetteId],
+          ),
+        ) ??
+        0;
+    await db.update(
+      'recettes',
+      {'likes': count},
+      where: 'id = ?',
+      whereArgs: [recetteId],
+    );
   }
 
   static Future<bool> estFavori(int userId, int recetteId) async {
@@ -43,6 +59,19 @@ class FavorisService {
       {'note': note},
       where: 'utilisateur_id = ? AND recette_id = ?',
       whereArgs: [userId, recetteId],
+    );
+
+    // Met à jour la note moyenne dans la table recettes
+    final rows = await db.rawQuery(
+      'SELECT AVG(note) AS moyenne FROM favoris WHERE recette_id = ? AND note > 0',
+      [recetteId],
+    );
+    final moyenne = (rows.first['moyenne'] as num?)?.toDouble() ?? 0.0;
+    await db.update(
+      'recettes',
+      {'note': moyenne},
+      where: 'id = ?',
+      whereArgs: [recetteId],
     );
   }
 

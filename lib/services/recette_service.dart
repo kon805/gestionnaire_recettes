@@ -3,6 +3,29 @@ import 'package:gestionnaire_recettes/services/database_service.dart';
 import 'package:gestionnaire_recettes/models/recette.dart';
 
 class RecetteService {
+  /// Synchronise les likes pour toutes les recettes (utile après migration ou bug)
+  static Future<void> synchroniserLikes() async {
+    final db = await DatabaseService.getDatabase();
+    final recettes = await db.query('recettes');
+    for (final recette in recettes) {
+      final recetteId = recette['id'];
+      final count =
+          Sqflite.firstIntValue(
+            await db.rawQuery(
+              'SELECT COUNT(*) FROM favoris WHERE recette_id = ?',
+              [recetteId],
+            ),
+          ) ??
+          0;
+      await db.update(
+        'recettes',
+        {'likes': count},
+        where: 'id = ?',
+        whereArgs: [recetteId],
+      );
+    }
+  }
+
   static Future<int> ajouterRecette({
     required String titre,
     required String description,

@@ -10,7 +10,7 @@ class DatabaseService {
     final path = join(await getDatabasesPath(), 'recettes.db');
     _database = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE utilisateurs (
@@ -28,6 +28,8 @@ class DatabaseService {
       description TEXT,
       image_path TEXT,
       utilisateur_id INTEGER,
+      likes INTEGER DEFAULT 0,
+      note REAL DEFAULT 0,
       FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
     )
   ''');
@@ -64,6 +66,17 @@ class DatabaseService {
     FOREIGN KEY (recette_id) REFERENCES recettes(id)
   )
 ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Ici, on ne supprime rien, on peut ajouter des migrations si besoin
+        // Par défaut, ne rien faire pour préserver les données existantes
+        // Exemples de migrations :
+        // if (oldVersion < 4) {
+        //   await db.execute("ALTER TABLE recettes ADD COLUMN nouvelle_colonne TEXT;");
+        // }
+      },
+      onDowngrade: (db, oldVersion, newVersion) async {
+        // Ne rien faire pour préserver les données existantes lors d'une rétrogradation
       },
     );
     return _database!;
